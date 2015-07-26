@@ -3,3 +3,5 @@
 target
 .lein-failures
 bot.zip
+*.iml
+.idea

@@ -29,7 +29,20 @@
 
 (defn pick_starting_region
     [state ids]
-    (rand-nth ids))
+    (let [regions (select-keys (state :regions) ids)]
+        (:id (val (first (sort (fn [r1 r2]
+                                   (let [sr1 (super_region state (val r1))
+                                         sr2 (super_region state (val r2))
+                                         sr1_score (:score sr1)
+                                         sr2_score (:score sr2)]
+                                       (if (= sr1_score sr2_score)
+                                           (compare (:id sr1) (:id sr2))
+                                           (compare sr1_score sr2_score))
+                                       ))
+                               regions)
+                         )))
+        )
+    )
 
 ;; ----- placement and attacking
 

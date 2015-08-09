@@ -9,6 +9,10 @@
     [region]
     (= :us (:owner region)))
 
+(defn not_ours?
+  [region]
+  (not (= :us (:owner region))))
+
 (defn enemy?
     [region]
     (= :them (:owner region)))
@@ -81,14 +85,19 @@
 (defn random_movement
     [state region]
     (let [neighbours  (neighbours state region)
-          destination (rand-nth neighbours)
+          destination (rand-nth (filter not_ours? neighbours))
           armies      (dec (:armies region))
           movement    {:from region :to destination :armies armies}]
         movement))
+
+(defn biggest_neighbour
+  [regions region]
+    (first (sort-by :armies > (filter (fn [r] (some (fn [id] (= id (:id r))) (:neighbours region))) regions)))
+  )
 
 (defn attack
     [state] 
     (->> (regions state)
         (filter ours?)
-        (filter (fn [region] (> (:armies region) 1)))
+        (filter (fn [region] (> (:armies region) (+ 1 (:armies (biggest_neighbour (filter not_ours? (regions state)) region))))))
         (map (partial random_movement state))))

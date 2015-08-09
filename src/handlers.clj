@@ -29,26 +29,40 @@
                         (Integer/parseInt id)
                         {:id (Integer/parseInt id)
                          :reward int_reward
-                         :score (if (zero? int_reward) 10 int_reward)})))
+                         :score (if (zero? int_reward) 20 (* -1 int_reward))
+                         :region_count 0})))
             {}
             (partition 2 args))))
 
+(defn update_region_count
+  [state args]
+  (reduce (fn [state [id super_region_id]]
+             (update-in
+               (update-in state [:super_regions (Integer/parseInt super_region_id) :region_count] inc)
+               [:super_regions (Integer/parseInt super_region_id) :score]
+               + 2)) state (partition 2 args))
+  )
+
 (defn setup_map_regions
-    [state & args]
-    (assoc state
+  [state & args]
+  (-> state
+      (assoc
         :regions
         (reduce
-            (fn [regions [id super_region_id]]
-                (assoc regions
-                    (Integer/parseInt id)
-                    {   :id (Integer/parseInt id)
-                     :super_region_id (Integer/parseInt super_region_id)
-                     :armies 2
-                     :neighbours []
-                     :owner :neutral
-                     }))
-            {}
-            (partition 2 args))))
+          (fn [regions [id super_region_id]]
+            (assoc regions
+              (Integer/parseInt id)
+              {   :id (Integer/parseInt id)
+               :super_region_id (Integer/parseInt super_region_id)
+               :armies 2
+               :neighbours []
+               :owner :neutral
+               })
+            )
+          {}
+          (partition 2 args)))
+      (update_region_count args))
+  )
 
 (defn setup_map_neighbors
     [state & args]
@@ -80,8 +94,7 @@
                     [:regions (Integer/parseInt region_id) :armies]
                     6)
                 (assoc-in [:regions (Integer/parseInt region_id) :super_region :wasteland] true)
-                (assoc-in [:super_regions (:super_region_id (get-in state [:regions (Integer/parseInt region_id)])) :score]
-                          (+ 5 (get-in state [:super_regions (:super_region_id (get-in state [:regions (Integer/parseInt region_id)])) :score])))
+                (update-in [:super_regions (:super_region_id (get-in state [:regions (Integer/parseInt region_id)])) :score] + 5)
                 ))
         state
         wasteland_ids))

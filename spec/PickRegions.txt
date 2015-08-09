@@ -22,4 +22,4 @@ settings starting_pick_amount 2
 
 pick_starting_region 10000 4 5 7 12 17
 
-# Valid: 7
+# Valid: 4

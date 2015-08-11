@@ -73,31 +73,51 @@
 (defn place_armies
     [state]
     (let [regions   (filter ours? (regions state))
+          super_region_id_neighbors (set (map :super_region_id (flatten (map (fn [region] (neighbours state region)) regions))))
           regions_by_super (group-by :super_region_id regions)
           super_regions_with_capture (super_regions_with_capture_count state regions_by_super)
-          super_regions_to_capture (sort-by :score < (filter super_captured? (vals super_regions_with_capture)))
+          super_regions_to_capture (sort-by :score < (filter (fn [sr] (get-in super_region_id_neighbors [(:id sr)])) (filter super_captured? (vals super_regions_with_capture))))
           regions_to_capture (filter (fn [region] (and (not (ours? region)) (= (:id (first super_regions_to_capture)) (:super_region_id region)))) (vals (:regions state)))
           regions_ids_capture_with (clojure.set/intersection (set (map :id regions)) (set (flatten (map :neighbours regions_to_capture))))
-          region    (first (filter (fn [region] (= (first regions_ids_capture_with) (region :id)) ) regions))                      ;sort regions by attack of super region
+          region    (first (filter (fn [region] (= (first regions_ids_capture_with) (:id region))) regions))
           placement {:region region :armies (:starting_armies state)}]
         [placement]))
 
 (defn random_movement
     [state region]
     (let [neighbours  (neighbours state region)
-          destination (rand-nth (filter not_ours? neighbours))
+          enemy_neighbours (filter not_ours? neighbours)
+          destination (rand-nth (if (empty? enemy_neighbours) neighbours enemy_neighbours))
           armies      (dec (:armies region))
           movement    {:from region :to destination :armies armies}]
         movement))
 
 (defn biggest_neighbour
   [regions region]
-    (first (sort-by :armies > (filter (fn [r] (some (fn [id] (= id (:id r))) (:neighbours region))) regions)))
+    (let [neighbours (filter (fn [r] (some (fn [id] (= id (:id r))) (:neighbours region))) regions)]
+       (if (empty? neighbours)
+         {}
+         (first (sort-by :armies > neighbours))))
+  )
+
+(defn biggest_neighbour_armies
+  [state region]
+  (let [regions (filter not_ours? (regions state))
+        neighbour (biggest_neighbour regions region)]
+    (if (empty? neighbour)
+      0
+      (:armies neighbour)
+      ))
   )
 
 (defn attack
     [state] 
     (->> (regions state)
-        (filter ours?)
-        (filter (fn [region] (> (:armies region) (+ 1 (:armies (biggest_neighbour (filter not_ours? (regions state)) region))))))
+         (filter ours?)
+         (filter (fn [region] (> (:armies region) 1)))
+         (filter (fn [region] (>
+                               (:armies region)
+                               (+ 1 (biggest_neighbour_armies
+                                      state
+                                      region)))))
         (map (partial random_movement state))))

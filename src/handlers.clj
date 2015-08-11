@@ -120,7 +120,7 @@
                   armies                   (Integer/parseInt _armies)]
                 (update-in state
                            [:regions region_id :armies]
-                           (partial + armies))))
+                           + armies)))
         state
         args))
 
@@ -162,9 +162,9 @@
             (let [region_id (Integer/parseInt region_id)
                   armies    (Integer/parseInt armies)
                   owner     (owner_symbol state owner)]
-                (assoc-in state
-                          [:regions region_id :owner]
-                          owner)))
+                (-> state
+                    (assoc-in [:regions region_id :owner] owner)
+                    (assoc-in [:regions region_id :armies] armies))))
         (reduce
             (fn [state region_id]
                 (if (= :us (get-in state [:regions region_id :owner]))

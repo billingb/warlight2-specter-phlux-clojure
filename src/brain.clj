@@ -87,7 +87,9 @@
     [state region]
     (let [neighbours  (neighbours state region)
           enemy_neighbours (filter not_ours? neighbours)
-          destination (rand-nth (if (empty? enemy_neighbours) neighbours enemy_neighbours))
+          destination (if (empty? enemy_neighbours)
+                        (rand-nth neighbours)
+                        (first (sort (fn [r1 r2] (compare ((super_region state r1) :score) ((super_region state r2) :score))) enemy_neighbours)))
           armies      (dec (:armies region))
           movement    {:from region :to destination :armies armies}]
         movement))

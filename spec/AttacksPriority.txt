@@ -1,0 +1,47 @@
+settings timebank 10000
+
+settings time_per_move 500
+
+settings max_rounds 60
+
+settings your_bot player1
+
+settings opponent_bot player2
+
+setup_map super_regions 1 4 2 3 3 1 4 4 5 1
+
+setup_map regions 1 1 2 1 3 1 4 1 5 1 6 2 7 2 8 2 9 2 10 3 11 3 12 3 13 4 14 4 15 4 16 4 17 4 18 4 19 5 20 5
+
+setup_map neighbors 1 3,2,4,6 2 3 3 5,10,4 4 5,6,7,8 5 11,13,10,8 6 7 7 9,8 8 17,13,9,20,15 9 19,20 10 11,12 11 13,14,12,15 13 15 14 15,16 15 16,18,17 17 18,20 19 20
+
+setup_map wastelands 7 14
+
+settings starting_regions 4 8 12 18 19
+
+settings starting_pick_amount 2
+
+pick_starting_region 10000 4 8 12 18 19
+
+Output from your bot: "19"
+
+pick_starting_region 9943 8 18
+
+Output from your bot: "8"
+
+setup_map opponent_starting_regions 4 12
+
+settings starting_armies 5
+
+update_map 8 player1 2 19 player1 2 4 player2 2 7 neutral 6 5 neutral 2 17 neutral 2 13 neutral 2 9 neutral 2 20 neutral 2 15 neutral 2
+
+opponent_moves
+
+Round 1
+
+go place_armies 10000
+
+Output from your bot: "player1 place_armies 19 5,"
+
+go attack/transfer 10000
+
+# Valid: [player1 attack/transfer 19 20 6]

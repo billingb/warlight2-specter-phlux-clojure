@@ -184,7 +184,7 @@
 ; doesn't do anything
 (defn Round
     [state number]
-    state)
+    (assoc-in state [:round] number))
 
 (defn go_place_armies
     [state timebank]

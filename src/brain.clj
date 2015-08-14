@@ -109,7 +109,7 @@
                         (rand-nth neighbours)
                         (first (sort (fn [r1 r2] (compare ((super_region state r1) :score) ((super_region state r2) :score))) enemy_neighbours)))
           armies      (if (> (count enemy_neighbours) 1)
-                        (min (dec (:armies region)) (+ 10 (destination :armies)))
+                        (min (dec (:armies region)) (max (+ 10 (destination :armies)) (/ (:armies region) 2)))
                         (dec (:armies region)))
           movement    {:from region :to destination :armies armies}]
         movement))

@@ -46,4 +46,4 @@ go place_armies 10000
 
 ## The bot should place armies on region 13
 
-# Valid: [player1 place_armies 13 5]
+# Valid: [player1 place_armies 16 2,player1 place_armies 13 3,]

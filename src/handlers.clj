@@ -29,7 +29,7 @@
                         (Integer/parseInt id)
                         {:id (Integer/parseInt id)
                          :reward int_reward
-                         :score (if (zero? int_reward) 20 (* -1 int_reward))
+                         :score (if (zero? int_reward) -10 int_reward)
                          :region_count 0})))
             {}
             (partition 2 args))))
@@ -37,10 +37,18 @@
 (defn update_region_count
   [state args]
   (reduce (fn [state [id super_region_id]]
-             (update-in
-               (update-in state [:super_regions (Integer/parseInt super_region_id) :region_count] inc)
-               [:super_regions (Integer/parseInt super_region_id) :score]
-               + 2)) state (partition 2 args))
+             (-> state
+                 (update-in [:super_regions (Integer/parseInt super_region_id) :region_count] inc)
+                 (assoc-in
+                   [:super_regions (Integer/parseInt super_region_id) :score]
+                   (if (= 0 (get-in state [:super_regions (Integer/parseInt super_region_id) :reward]))
+                     -10
+                     (- (/
+                          (get-in state [:super_regions (Integer/parseInt super_region_id) :reward])
+                          (inc (get-in state [:super_regions (Integer/parseInt super_region_id) :region_count])))
+                        (* 0.05 (inc (get-in state [:super_regions (Integer/parseInt super_region_id) :region_count])))) )
+                    ))
+            ) state (partition 2 args))
   )
 
 (defn setup_map_regions
@@ -94,7 +102,7 @@
                     [:regions (Integer/parseInt region_id) :armies]
                     6)
                 (assoc-in [:regions (Integer/parseInt region_id) :super_region :wasteland] true)
-                (update-in [:super_regions (:super_region_id (get-in state [:regions (Integer/parseInt region_id)])) :score] + 5)
+                (update-in [:super_regions (:super_region_id (get-in state [:regions (Integer/parseInt region_id)])) :score] - 0.5)
                 ))
         state
         wasteland_ids))

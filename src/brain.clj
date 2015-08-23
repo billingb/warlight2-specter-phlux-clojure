@@ -33,19 +33,38 @@
     [state region]
     (get-in state [:super_regions (:super_region_id region)]))
 
+(defn compare_owner
+  [o1 o2]
+  (cond
+    (= o1 o2) 0
+    (= :them o1) 1
+    (= :them o2) -1
+    (= :neutral o1) 1
+    (= :neutral o2) -1
+    :else 0
+  )
+  )
+
+(defn compare_regions
+  [r1 r2 state]
+  (let [sr1 (super_region state r1)
+        sr2 (super_region state r2)
+        sr1_score (:score sr1)
+        sr2_score (:score sr2)]
+    (if (= sr1_score sr2_score)
+      (if (= (:owner r1) (:owner r2))
+        (compare (:id sr1) (:id sr2))
+        (compare_owner (:owner r2) (:owner r1)))
+      (compare sr2_score sr1_score))
+    )
+  )
+
 ;; ----- picking regions
 (defn pick_starting_region
     [state ids]
     (let [regions (select-keys (state :regions) ids)]
         (:id (val (first (sort (fn [r1 r2]
-                                   (let [sr1 (super_region state (val r1))
-                                         sr2 (super_region state (val r2))
-                                         sr1_score (:score sr1)
-                                         sr2_score (:score sr2)]
-                                       (if (= sr1_score sr2_score)
-                                           (compare (:id sr1) (:id sr2))
-                                           (compare sr1_score sr2_score))
-                                       ))
+                                   (compare_regions (val r1) (val r2) state))
                                regions)
                          )))
         )
@@ -84,15 +103,10 @@
   [neighbours region]
   (apply max (conj (map (fn [neighbour]
                           (case (:owner neighbour)
-                            :them (+ (- (:armies region) (:armies neighbour)) 8)
-                            :neutral (+ (- (:armies region) (:armies neighbour)) 3)
+                            :them (+ (- (:armies neighbour) (:armies region)) 8)
+                            :neutral (+ (- (:armies neighbour) (:armies region)) 3)
                             :us 0))
                         neighbours) 0)))
-
-(defn build_placement
-  [state region_id]
-  (let [region (get-in state [:regions region_id])]
-    {:region region :armies (needed_armies (neighbours state region) region)}))
 
 (defn create_placements
   [state region_ids armies]
@@ -103,8 +117,11 @@
     (if (< remaining_armies 0)
       [{:region region :armies armies}]
       (if (empty? remaining_region_ids)
-        {:region region :armies placement_armies}
-        (conj (create_placements state remaining_region_ids remaining_armies) {:region region :armies placement_armies}))))
+        [{:region region :armies armies}]
+        (if (> placement_armies 0)
+          (conj (create_placements state remaining_region_ids remaining_armies) {:region region :armies placement_armies})
+          (create_placements state remaining_region_ids remaining_armies))
+        )))
   )
 
 
@@ -113,7 +130,7 @@
   (create_placements state region_ids armies)
   )
 
-; Find the super region that is the highest priority. This is the region with the lowest
+; Find the super region that is the highest priority. This is the region with the highest
 ; score that has not been captured yet.
 (defn place_armies
     [state]
@@ -121,18 +138,20 @@
           super_region_id_neighbors (set (map :super_region_id (flatten (map (fn [region] (neighbours state region)) regions))))
           regions_by_super (group-by :super_region_id regions)
           super_regions_with_capture (super_regions_with_capture_count state regions_by_super)
-          super_regions_to_capture (sort-by :score < (filter (fn [sr] (get-in super_region_id_neighbors [(:id sr)])) (filter super_captured? (vals super_regions_with_capture))))
+          super_regions_to_capture (sort-by :score > (filter (fn [sr] (get-in super_region_id_neighbors [(:id sr)])) (filter super_captured? (vals super_regions_with_capture))))
           regions_to_capture (filter
                                                                       (fn [region] (and
                                                                                      (not (ours? region))
                                                                                      (some #(= (:super_region_id region) %) (map :id super_regions_to_capture))))
                                                                       (vals (:regions state)))
-          sorted_regions_to_capture (sort (fn [r1 r2] (compare ((super_region state r1) :score) ((super_region state r2) :score))) regions_to_capture)
+          sorted_regions_to_capture (sort (fn [r1 r2] (compare ((super_region state r2) :score) ((super_region state r1) :score))) regions_to_capture)
           region_ids_capture_with (filter (fn [rid] (ours? (get-in state [:regions rid]))) (distinct (flatten (map :neighbours sorted_regions_to_capture))))
           region_ids_need_armies (filter (fn [rid] (needs_armies? state rid)) region_ids_capture_with)
-          placements (build_placements state region_ids_need_armies (:starting_armies state))
-          ;region    (first (filter #(= (:id %) (or (first region_ids_need_armies) (first region_ids_capture_with))) regions))
-          ;placement {:region region :armies (:starting_armies state)}
+          placements (build_placements state
+                                       (if (not (empty? region_ids_need_armies))
+                                               region_ids_need_armies
+                                               region_ids_capture_with)
+                                       (:starting_armies state))
           ]
         placements))
 
@@ -144,7 +163,7 @@
                         (rand-nth neighbours)
                         (first
                           (sort
-                            (fn [r1 r2] (compare ((super_region state r1) :score) ((super_region state r2) :score)))
+                            (fn [r1 r2] (compare_regions r1 r2 state))
                             (shuffle enemy_neighbours))))
           armies      (if (> (count enemy_neighbours) 1)
                         (min (dec (:armies region)) (max (+ 10 (destination :armies)) (/ (:armies region) 2)))
@@ -152,18 +171,18 @@
           movement    {:from region :to destination :armies armies}]
         movement))
 
-(defn biggest_neighbour
+(defn biggest_enemy_neighbour
   [regions region]
     (let [neighbours (filter (fn [r] (some (fn [id] (= id (:id r))) (:neighbours region))) regions)]
        (if (empty? neighbours)
          {}
-         (first (sort-by :armies > neighbours))))
+         (first (filter enemy? (sort-by :armies > neighbours)))))
   )
 
-(defn biggest_neighbour_armies
+(defn biggest_enemy_neighbour_armies
   [state region]
   (let [regions (filter not_ours? (regions state))
-        neighbour (biggest_neighbour regions region)]
+        neighbour (biggest_enemy_neighbour regions region)]
     (if (empty? neighbour)
       0
       (:armies neighbour)
@@ -174,10 +193,14 @@
     [state] 
     (->> (regions state)
          (filter ours?)
-         (filter (fn [region] (> (:armies region) 1)))
+         (filter (fn [region] (> (:armies region) 2)))
          (filter (fn [region] (>
                                (:armies region)
-                               (+ 1 (biggest_neighbour_armies
+                               (+ 1 (biggest_enemy_neighbour_armies
                                       state
                                       region)))))
-        (map (partial region_movement state))))
+         (map (partial region_movement state))
+         (filter (fn [move]
+                   (<
+                     (:armies (:to move))
+                     (:armies move))))))

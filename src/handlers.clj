@@ -92,20 +92,21 @@
 
 (defn setup_map_wastelands
     [state & wasteland_ids]
-    (reduce
+    (brain/update_super_region_capture_count
+      (reduce
         (fn [state region_id]
-            (-> state
-                (assoc-in
-                    [:regions (Integer/parseInt region_id) :wasteland]
-                    true)
-                (assoc-in
-                    [:regions (Integer/parseInt region_id) :armies]
-                    6)
-                (assoc-in [:regions (Integer/parseInt region_id) :super_region :wasteland] true)
-                (update-in [:super_regions (:super_region_id (get-in state [:regions (Integer/parseInt region_id)])) :score] - 0.5)
-                ))
+          (-> state
+              (assoc-in
+                [:regions (Integer/parseInt region_id) :wasteland]
+                true)
+              (assoc-in
+                [:regions (Integer/parseInt region_id) :armies]
+                6)
+              (assoc-in [:regions (Integer/parseInt region_id) :super_region :wasteland] true)
+              (update-in [:super_regions (:super_region_id (get-in state [:regions (Integer/parseInt region_id)])) :score] - 0.5)
+              ))
         state
-        wasteland_ids))
+        wasteland_ids)))
 
 (defn setup_map_opponent_starting_regions
     [state & ids]
@@ -192,7 +193,11 @@
 ; doesn't do anything
 (defn Round
     [state number]
-    (assoc-in state [:round] number))
+    (-> state
+        (assoc-in [:round] number)
+        (brain/round_update)
+        ))
+
 
 (defn go_place_armies
     [state timebank]

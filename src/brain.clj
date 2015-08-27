@@ -74,11 +74,7 @@
 (defn super_regions_with_capture_count
   [state regions_group_super]
   (get-in
-    (reduce
-      (fn
-        [state [region_group_key region_group_val]]
-        (assoc-in state [:super_regions region_group_key :region_capture_count] (count region_group_val)))
-      state regions_group_super)
+    state
     [:super_regions]))
 
 (defn super_captured?
@@ -204,3 +200,46 @@
                    (<
                      (:armies (:to move))
                      (:armies move))))))
+
+(defn update_super_region_capture_count
+  [state]
+  (let [grouped_regions (group-by :super_region_id (filter ours? (regions state)))]
+    (reduce
+      (fn
+        [state super_region_id]
+        (assoc-in state [:super_regions super_region_id :region_capture_count] (if (= 0 (count grouped_regions)) 0 (count (grouped_regions super_region_id)))))
+      state (keys (:super_regions state))))
+  )
+
+(defn update_super_region_scores
+  [state]
+  (reduce (fn
+            [state super_region_id]
+            (assoc-in state
+                      [:super_regions super_region_id :score]
+                      (if (= 0 (get-in state [:super_regions super_region_id :reward]))
+                        -10
+                        (if (=
+                              (get-in state [:super_regions super_region_id :region_capture_count])
+                              (get-in state [:super_regions super_region_id :region_count]))
+                          (get-in state [:super_regions super_region_id :reward])
+                          (- (- (/
+                                  (get-in state [:super_regions super_region_id :reward])
+                                  (-
+                                    (get-in state [:super_regions super_region_id :region_count])
+                                    (get-in state [:super_regions super_region_id :region_capture_count])))
+                                (if (contains? (get-in state [:super_regions super_region_id]) :wasteland) 0.5 0))
+                             (* 0.05 (-
+                                       (get-in state [:super_regions super_region_id :region_count])
+                                       (get-in state [:super_regions super_region_id :region_capture_count])))))
+                           )
+                      ))
+          state (keys (:super_regions state)))
+  )
+
+(defn round_update
+  [state]
+  (-> state
+      (update_super_region_capture_count)
+      (update_super_region_scores)))
+

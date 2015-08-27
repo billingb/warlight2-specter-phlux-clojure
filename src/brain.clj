@@ -72,7 +72,7 @@
 
 ;; ----- placement and attacking
 (defn super_regions_with_capture_count
-  [state regions_group_super]
+  [state]
   (get-in
     state
     [:super_regions]))
@@ -132,8 +132,7 @@
   [state]
   (let [regions (filter ours? (regions state))
         super_region_id_neighbors (set (map :super_region_id (flatten (map (fn [region] (neighbours state region)) regions))))
-        regions_by_super (group-by :super_region_id regions)
-        super_regions_with_capture (super_regions_with_capture_count state regions_by_super)
+        super_regions_with_capture (super_regions_with_capture_count state)
         super_regions_to_capture (sort-by :score > (filter (fn [sr] (get-in super_region_id_neighbors [(:id sr)])) (filter super_captured? (vals super_regions_with_capture))))
         regions_to_capture (filter
                              (fn [region] (and
